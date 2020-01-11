@@ -1,0 +1,70 @@
+containers:
+  build-env:
+    image: python:3.7
+    volumes:
+      - local: .
+        container: /src
+        options: cached
+      - local: .pip-cache
+        container: /src/.pip-cache
+      - local: .venv-cache
+        container: /src/.venv
+    working_directory: /src
+    run_as_current_user:
+      enabled: true
+      home_directory: /home/container-user
+    environment:
+      PIPENV_VENV_IN_PROJECT: true
+      PYTHONUSERBASE: "/src/.pip-cache"
+      USERNAME: Metaflowtestuser
+
+tasks:
+  dep_0:
+    description: Download pipenv dependency & linter
+    group: Utility tasks
+    run:
+      container: build-env
+      command: pip install --user pipenv
+
+  dep_1:
+    description: Download dependencies
+    group: Utility tasks
+    run:
+      container: build-env
+      command: python -m pipenv install --skip-lock
+
+  shell:
+    description: Open shell in container
+    group: Utility tasks
+    run:
+      container: build-env
+      command: sh
+
+  lint:
+    description: lint python files
+    group: Utility tasks
+    run:
+      container: build-env
+      command: python -m pipenv run python -m black .
+
+  get_data:
+    description: download nlp data to local file
+    group: Build tasks
+    run:
+      container: build-env
+      command: python -m pipenv run python 2_get_data.py run
+
+  show_flows:
+    description: Show available flows
+    group: Build tasks
+    run:
+      container: build-env
+      command: python -m pipenv run metaflow show
+
+
+  say_hello:
+    description: Run the most basic metaflow
+    group: Build tasks
+    run:
+      container: build-env
+      command: python -m pipenv run python 1_hello_kaggle.py show
