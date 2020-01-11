@@ -61,10 +61,16 @@ tasks:
       container: build-env
       command: python -m pipenv run metaflow show
 
-
   say_hello:
     description: Run the most basic metaflow
     group: Build tasks
     run:
       container: build-env
       command: python -m pipenv run python 1_hello_kaggle.py show
+
+  say_machine_learning:
+    description: Run the some machine learning metaflow
+    group: Build tasks
+    run:
+      container: build-env
+      command: python -m pipenv run python 3_model.py run

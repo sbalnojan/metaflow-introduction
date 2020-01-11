@@ -39,5 +39,6 @@ list(run)
 
 vec = run["vectorize"].task.data.vec
 train_dataset = run["describe"].task.data.train_dataset
-train_dataset
+
+transformed_data = vec.transform(train_dataset["text"])
 
