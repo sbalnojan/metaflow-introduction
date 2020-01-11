@@ -1,8 +1,12 @@
 import gluonnlp as nlp
-from metaflow import FlowSpec,step
+from metaflow import FlowSpec,step, Parameter
 import pandas as pd
 
 class DataFlow(FlowSpec):
+    max_features = Parameter('max_features',
+                      help='Max no. of features to use',
+                      default=10000)
+
     @step
     def start(self):
         print("Beginning our example")
@@ -17,25 +21,46 @@ class DataFlow(FlowSpec):
         target_dir = "./data/imdb"
         print(f"Will now download the data to folder {target_dir}")
 
-        self.train_dataset, self.test_dataset = [
+        train_dataset, test_dataset = [
             nlp.data.IMDB(root=target_dir, segment=segment) for segment in ("train", "test")
         ]
+        self.train_dataset = pd.DataFrame(train_dataset._data, columns=["text", "score"])
+        self.test_dataset = pd.DataFrame(test_dataset._data, columns=["text", "score"])
 
         self.next(self.describe)
 
     @step
     def describe(self):
-        self.df = pd.DataFrame(self.train_dataset._data, columns=["text", "score"])
-        print(self.df.head(5))
-        print(self.df.describe())
+        df = self.train_dataset
+        print(df.head(5))
+        print(df.describe())
         self.next(self.vectorize)
 
     @step
     def vectorize(self):
         from sklearn.feature_extraction.text import TfidfVectorizer
-        max_features = 500000
+        max_features = self.max_features
         self.vec = TfidfVectorizer(max_features=max_features)
-        self.vec.fit(self.df["text"])
+        self.vec.fit(self.train_dataset["text"])
+        self.next(self.fit_train, self.fit_test)
+
+    @step
+    def fit_train(self):
+        transformed_data = self.vec.transform(self.train_dataset["text"])
+        self.transformed_data = pd.DataFrame(transformed_data.toarray())
+
+        self.next(self.join)
+
+    @step
+    def fit_test(self):
+        transformed_data = self.vec.transform(self.test_dataset["text"])
+        self.transformed_data = pd.DataFrame(transformed_data.toarray())
+        self.next(self.join)
+
+    @step
+    def join(self, inputs):
+        print('a is %s' % inputs.fit_train.transformed_data.head())
+        print('b is %s' % inputs.fit_test.transformed_data.head())
         self.next(self.end)
 
     @step

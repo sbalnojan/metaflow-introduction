@@ -17,15 +17,17 @@ class DataFlow(FlowSpec):
         target_dir = "./data/imdb"
         print(f"Will now download the data to folder {target_dir}")
 
-        self.train_dataset, self.test_dataset = [
+        train_dataset, test_dataset = [
             nlp.data.IMDB(root=target_dir, segment=segment) for segment in ("train", "test")
         ]
+        self.train_dataset = pd.DataFrame(train_dataset._data, columns=["text", "score"])
+        self.test_dataset = pd.DataFrame(test_dataset._data, columns=["text", "score"])
 
         self.next(self.describe)
 
     @step
     def describe(self):
-        df = pd.DataFrame(self.train_dataset._data, columns=["text", "score"])
+        df = self.train_dataset
         print(df.head(5))
         print(df.describe())
         self.next(self.end)
