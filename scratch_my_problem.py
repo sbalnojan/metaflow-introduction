@@ -37,8 +37,19 @@ run = flow.latest_run
 
 list(run)
 
-vec = run["vectorize"].task.data.vec
-train_dataset = run["describe"].task.data.train_dataset
+y = run["fit_train"].task.data.train_dataset["score"]
+df = run["fit_train"].task.data.transformed_data
+from sklearn.ensemble import RandomForestClassifier
+clf = RandomForestClassifier(max_depth=5, random_state=0)
+clf.fit(df, y)
 
-transformed_data = vec.transform(train_dataset["text"])
+X_test = run["fit_test"].task.data.transformed_data
+y_test = run["fit_test"].task.data.test_dataset["score"]
 
+print(clf.feature_importances_)
+
+predictions = clf.predict(X_test)
+
+from sklearn.metrics import f1_score
+
+f1_score = f1_score(y_test,predictions, average="micro")

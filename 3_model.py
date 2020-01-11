@@ -1,5 +1,5 @@
 import gluonnlp as nlp
-from metaflow import FlowSpec,step, Parameter
+from metaflow import FlowSpec,step, Parameter, current
 import pandas as pd
 
 class DataFlow(FlowSpec):
@@ -48,24 +48,48 @@ class DataFlow(FlowSpec):
     def fit_train(self):
         transformed_data = self.vec.transform(self.train_dataset["text"])
         self.transformed_data = pd.DataFrame(transformed_data.toarray())
-
-        self.next(self.join)
+        self.y = self.train_dataset["score"]
+        self.next(self.fit_clf)
 
     @step
     def fit_test(self):
         transformed_data = self.vec.transform(self.test_dataset["text"])
         self.transformed_data = pd.DataFrame(transformed_data.toarray())
-        self.next(self.join)
+        self.y = self.test_dataset["score"]
+        self.next(self.score)
 
     @step
-    def join(self, inputs):
-        print('a is %s' % inputs.fit_train.transformed_data.head())
-        print('b is %s' % inputs.fit_test.transformed_data.head())
+    def fit_clf(self):
+        print('a is %s' % self.transformed_data.head())
+        print("Now let's train....\n")
+
+        from sklearn.ensemble import RandomForestClassifier
+        clf = RandomForestClassifier(max_depth=5, random_state=0)
+        clf.fit(self.transformed_data, self.y)
+        self.clf = clf
+        self.next(self.score)
+
+    @step
+    def score(self, inputs):
+        predictions = inputs.fit_clf.clf.predict(inputs.fit_test.transformed_data)
+
+        from sklearn.metrics import f1_score
+
+        f1_score = f1_score(inputs.fit_test.y, predictions, average="micro")
+        print(f1_score)
+        self.clf = inputs.fit_clf.clf
         self.next(self.end)
 
     @step
     def end(self):
-        print("All done")
+        print("All done, let us version the important artifacts")
+        print("flow name: %s" % current.flow_name)
+        print("run id: %s" % current.run_id)
+        version_id = current.flow_name + current.run_id
+        model = self.clf
+        parameters = self.max_features
+        print(f"we can version it as {version_id}")
+
 
 if __name__ == "__main__":
     DataFlow()
